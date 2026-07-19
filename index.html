@@ -20,11 +20,12 @@
         <span class="brand-suffix">고객센터</span>
       </a>
       <div class="header-actions">
-        <button id="header-search" class="btn-icon" aria-label="검색">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <button id="header-search" class="header-search-pill" aria-label="검색">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <span>아티클 제목, 내용</span>
         </button>
         <a class="btn-primary" href="https://payhug.io" target="_blank" rel="noopener">
-          페이허그 바로가기
+          <span class="btn-label"><span class="btn-label-prefix">페이허그 </span>바로가기</span>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 17L17 7M9 7h8v8"/></svg>
         </a>
       </div>
@@ -33,7 +34,10 @@
 
   <div id="search-modal" class="search-modal" aria-hidden="true">
     <div class="modal-panel">
-      <input type="search" placeholder="아티클 제목, 내용 검색" autocomplete="off" />
+      <div class="modal-input-row">
+        <input type="search" placeholder="아티클 제목, 내용 검색" autocomplete="off" />
+        <button class="modal-cancel" data-close-search>취소</button>
+      </div>
       <div class="modal-results"></div>
     </div>
   </div>

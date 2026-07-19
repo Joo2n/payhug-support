@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head><meta charset="UTF-8"><title>QA Runner</title></head>
+<body>
+<iframe id="f" src="../index.html" style="width:1280px;height:900px;border:0"></iframe>
+<pre id="out">RUNNING</pre>
+<script>
+const out = [];
+const log = (name, ok, info) => out.push(`${ok ? "PASS" : "FAIL"} ${name}${info ? " — " + info : ""}`);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function waitFor(fn, timeout = 6000, step = 100) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(step);
+  }
+  return null;
+}
+(async () => {
+  try {
+    const f = document.getElementById("f");
+    // about:blank 초기 문서와의 레이스 방지: 실제 앱 요소가 나올 때까지 contentDocument를 매번 다시 조회
+    await waitFor(() => f.contentDocument && f.contentDocument.querySelector(".hero-search"), 10000);
+    const W = f.contentWindow, D = f.contentDocument;
+
+    // 1. 홈 렌더
+    log("home:hero-search", !!D.querySelector(".hero-search"));
+    log("home:feature-2", D.querySelectorAll(".feature-card").length === 2, "개수 " + D.querySelectorAll(".feature-card").length);
+    log("home:cat-rows-7", D.querySelectorAll(".cat-row").length === 7, "개수 " + D.querySelectorAll(".cat-row").length);
+    log("home:no-emoji", !/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(D.body.textContent));
+
+    // 2. 검색 모달 열기 (히어로 검색바)
+    D.querySelector(".hero-search").click();
+    await sleep(200);
+    log("search:modal-open", D.getElementById("search-modal").classList.contains("open"));
+
+    // 3. 검색 입력 → 결과 + 하이라이트 + 건수
+    const inp = D.querySelector("#search-modal input");
+    inp.value = "정산계좌";
+    inp.dispatchEvent(new W.Event("input", { bubbles: true }));
+    const hit = await waitFor(() => D.querySelector(".modal-results a"));
+    log("search:results", !!hit);
+    log("search:highlight-em", !!D.querySelector(".modal-results em"));
+    log("search:count-label", !!D.querySelector(".sr-count"));
+
+    // 4. 키보드 ↓ + Enter → 이동 + 모달 닫힘
+    inp.dispatchEvent(new W.KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    await sleep(100);
+    log("search:kbd-select", !!D.querySelector(".modal-results a.kbd-active"));
+    inp.dispatchEvent(new W.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    await sleep(400);
+    log("search:enter-nav", W.location.hash.startsWith("#/article/"), W.location.hash);
+    log("search:modal-closed", !D.getElementById("search-modal").classList.contains("open"));
+
+    // 5. 아티클 렌더: 앵커·복사버튼·TOC·문의 연결
+    await waitFor(() => D.querySelector(".article-body h2, .article-body details"));
+    log("article:h-anchor", D.querySelectorAll(".article-body .h-anchor").length > 0);
+    log("article:copy-btn", D.querySelectorAll(".article-body .copy-btn").length > 0);
+    log("article:toc", D.querySelectorAll("#toc a").length > 0);
+    log("article:inquiry-link", !!D.querySelector('.contact-box a[href*="my-info/inquiries"]'));
+
+    // 6. TOC 클릭 → 섹션 딥링크 + 스크롤 호출 검증
+    // (가상시간 헤드리스는 일정 시점 후 스크롤 커밋이 멈추므로 scrollY 대신 scrollTo 호출을 스파이)
+    const scrollCalls = [];
+    const origScrollTo = W.scrollTo.bind(W);
+    W.scrollTo = function (...args) { scrollCalls.push(args); return origScrollTo(...args); };
+    const calledTop = () =>
+      scrollCalls.some((a) => {
+        const top = a[0] && typeof a[0] === "object" ? a[0].top : a[1];
+        return typeof top === "number" && top > 50;
+      });
+    const tocLinks = D.querySelectorAll("#toc a");
+    if (tocLinks.length > 2) {
+      const tocLink = tocLinks[2];
+      const sec = tocLink.dataset.sec;
+      tocLink.click();
+      await waitFor(calledTop, 4000);
+      log("deeplink:hash", W.location.hash.includes("/" + sec), W.location.hash);
+      log("deeplink:scroll-called", calledTop(), "호출 " + scrollCalls.length + "회");
+      log("spy:active", !!D.querySelector("#toc a.active"));
+    } else {
+      log("deeplink:hash", false, "TOC 항목 부족");
+    }
+
+    // 7. FAQ 토글 렌더
+    W.location.hash = "#/article/faq";
+    await waitFor(() => D.querySelectorAll(".article-body details").length > 0, 5000);
+    log("faq:details-11", D.querySelectorAll(".article-body details").length >= 11, "개수 " + D.querySelectorAll(".article-body details").length);
+
+    // 8. 복사 버튼 → 토스트
+    const cb = D.querySelector(".article-body .copy-btn");
+    if (cb) { cb.click(); await waitFor(() => D.querySelector(".toast"), 3500); }
+    log("copy:toast", !!D.querySelector(".toast"));
+
+    // 9. 섹션 딥링크 직접 진입 (새 아티클) — scrollTo 호출 스파이 재사용
+    scrollCalls.length = 0;
+    W.location.hash = "#/article/settlement/sec-2";
+    await waitFor(calledTop, 4000);
+    log("direct-deeplink:scroll-called", calledTop(), "호출 " + scrollCalls.length + "회");
+
+    // 10. 홈 복귀
+    W.location.hash = "#/";
+    await waitFor(() => D.querySelector(".hero-search"));
+    log("home:return", !!D.querySelector(".hero-search"));
+  } catch (e) {
+    out.push("FAIL runner:exception — " + e.message);
+  }
+  const fails = out.filter((l) => l.startsWith("FAIL")).length;
+  document.getElementById("out").textContent = out.join("\n") + `\nDONE ${fails} FAILS`;
+  document.title = `QA_DONE_${fails}`;
+})();
+</script>
+</body>
+</html>

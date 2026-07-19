@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head><meta charset="UTF-8"><title>Mobile QA 375</title></head>
+<body>
+<!--
+  모바일(375px) QA 래퍼.
+  주의: macOS 헤드리스 Chrome(--headless=new)은 --window-size의 창 최소폭을 500px로 클램프한다.
+  --window-size=375로 캡처하면 실제로는 500px 뷰포트로 렌더된 화면의 좌측 375px만 잘려 저장되어
+  "우측 잘림"처럼 보이는 가짜 결함이 생긴다 (그 방식의 모바일 스크린샷은 전부 무효).
+  따라서 375px 검증은 이 same-origin iframe(375px) 래퍼로 수행한다.
+  (또는 Playwright/Puppeteer의 page.setViewport({ width: 375 }) 사용.)
+-->
+<iframe id="f" src="../index.html" style="width:375px;height:812px;border:0"></iframe>
+<pre id="out">RUNNING</pre>
+<script>
+const VW = 375;
+const out = [];
+const log = (name, ok, info) => out.push(`${ok ? "PASS" : "FAIL"} ${name}${info ? " — " + info : ""}`);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function waitFor(fn, timeout = 8000, step = 100) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(step);
+  }
+  return null;
+}
+// 뷰포트(375px) 밖으로 삐져나온 가시 요소 수집 (display:none 요소는 rect.width=0이라 자동 제외)
+function offenders(D) {
+  const bad = [];
+  for (const el of D.querySelectorAll("body *")) {
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && (r.right > VW + 1 || r.left < -1)) {
+      bad.push(el.tagName + (el.className && typeof el.className === "string" ? "." + el.className.split(" ")[0] : ""));
+    }
+  }
+  return bad;
+}
+function checkPage(D, label) {
+  const sw = Math.max(D.documentElement.scrollWidth, D.body.scrollWidth);
+  log(label + ":scrollWidth-375", sw <= VW, "scrollWidth " + sw);
+  const bad = offenders(D);
+  log(label + ":no-overflow-el", bad.length === 0, bad.length ? bad.slice(0, 5).join(", ") : "이탈 0개");
+}
+(async () => {
+  try {
+    const f = document.getElementById("f");
+    await waitFor(() => f.contentDocument && f.contentDocument.querySelector(".hero-search"), 10000);
+    const W = f.contentWindow, D = f.contentDocument;
+    log("env:innerWidth-375", W.innerWidth === VW, "innerWidth " + W.innerWidth);
+
+    // 1. 홈
+    checkPage(D, "home");
+    log("home:hero-search", !!D.querySelector(".hero-search"));
+
+    // 2. 선정산 아티클
+    W.location.hash = "#/article/settlement";
+    await waitFor(() => D.querySelector(".article-body h2"), 8000);
+    checkPage(D, "settlement");
+    const tocMobile = D.querySelector(".toc-mobile");
+    log("settlement:toc-mobile-visible", !!tocMobile && W.getComputedStyle(tocMobile).display !== "none");
+    const tocDesktop = D.querySelector(".toc");
+    log("settlement:toc-desktop-hidden", !tocDesktop || W.getComputedStyle(tocDesktop).display === "none");
+
+    // 3. FAQ
+    W.location.hash = "#/article/faq";
+    await waitFor(() => D.querySelectorAll(".article-body details").length > 0, 8000);
+    checkPage(D, "faq");
+    log("faq:details", D.querySelectorAll(".article-body details").length > 0);
+  } catch (e) {
+    out.push("FAIL runner:exception — " + e.message);
+  }
+  const fails = out.filter((l) => l.startsWith("FAIL")).length;
+  document.getElementById("out").textContent = out.join("\n") + `\nDONE ${fails} FAILS`;
+  document.title = `QA_MOBILE_DONE_${fails}`;
+})();
+</script>
+</body>
+</html>

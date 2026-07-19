@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head><meta charset="UTF-8"><title>Scroll Debug</title></head>
+<body>
+<iframe id="f" src="../index.html#/article/documents" style="width:1280px;height:900px;border:0"></iframe>
+<pre id="out">RUNNING</pre>
+<script>
+const out = [];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function waitFor(fn, timeout = 8000, step = 100) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(step);
+  }
+  return null;
+}
+(async () => {
+  const f = document.getElementById("f");
+  await waitFor(() => f.contentDocument && f.contentDocument.querySelector(".article-body h2"));
+  const W = f.contentWindow, D = f.contentDocument;
+  const el = D.getElementById("sec-1-2");
+  out.push("el(sec-1-2) exists: " + !!el);
+  if (el) out.push("el.rect.top=" + Math.round(el.getBoundingClientRect().top));
+  out.push("docHeight=" + D.documentElement.scrollHeight + " innerH=" + W.innerHeight);
+  out.push("scrollingElement=" + (D.scrollingElement ? D.scrollingElement.tagName : "null"));
+  // 시도 1: 즉시 scrollTo
+  W.scrollTo(0, 500);
+  await sleep(150);
+  out.push("try1 instant scrollTo(0,500) → scrollY=" + W.scrollY + " docEl.scrollTop=" + D.documentElement.scrollTop);
+  // 시도 2: scrollTop 직접 설정
+  D.documentElement.scrollTop = 600;
+  await sleep(150);
+  out.push("try2 docEl.scrollTop=600 → scrollY=" + W.scrollY + " scrollTop=" + D.documentElement.scrollTop);
+  // 시도 3: iframe 내부 setTimeout에서 positional scrollTo
+  W.setTimeout(() => W.scrollTo(0, 1000), 30);
+  await sleep(500);
+  out.push("try3 iframe-setTimeout scrollTo(0,1000) → scrollY=" + W.scrollY);
+  // 시도 4: options 객체 + smooth
+  W.scrollTo({ top: 1500, behavior: "smooth" });
+  await sleep(1200);
+  out.push("try4 scrollTo({top:1500,smooth}) → scrollY=" + W.scrollY);
+  // 시도 5: options 객체 + auto(즉시)
+  W.scrollTo({ top: 1800, behavior: "auto" });
+  await sleep(200);
+  out.push("try5 scrollTo({top:1800,auto}) → scrollY=" + W.scrollY);
+  // 시도 6: 해시 내비게이션 → 앱의 scrollToSection 경로 (시간대별 관찰)
+  W.location.hash = "#/article/documents/sec-2";
+  for (const t of [100, 500, 1000, 2000]) {
+    await sleep(t === 100 ? 100 : t - [100, 500, 1000, 2000][[100, 500, 1000, 2000].indexOf(t) - 1]);
+    out.push("try6 hash-nav +"+t+"ms → scrollY=" + W.scrollY);
+  }
+  document.getElementById("out").textContent = out.join("\n");
+  document.title = "DEBUG_DONE";
+})();
+</script>
+</body>
+</html>

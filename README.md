@@ -8,13 +8,34 @@
 ## 구조
 
 ```
-index.html      사이트 셸 (헤더·검색 모달·푸터)
+index.html      사이트 셸 (헤더 알약형 검색·검색 모달·푸터)
 style.css       디자인 시스템 (브랜드: 딥 그린 #163300 / 라임 #9fe870, Noto Sans KR)
-app.js          해시 라우터 + 렌더러 + 검색 (제목/본문 통합 검색)
-content.js      사이트 정보 + 아티클 메타데이터 (제목·설명·추천 여부·수정일)
+                레이아웃: 사이드내비 250px / 본문 700px / 목차 228px, 헤더 60px
+app.js          해시 라우터 + 렌더러 + 검색 + 인터랙션
+content.js      사이트 정보(문의 URL 포함) + 아티클 메타데이터
 content/*.html  아티클 본문 (HTML 조각) — 내용 수정은 여기서
 assets/         로고·파비콘 (payhug-merchant-web 원본)
+tests/          runner.html — 헤드리스 인터랙션 회귀 테스트 (22개 검증)
+                mobile-375.html — 모바일(375px) 뷰포트 QA (same-origin iframe 래퍼)
+inbox/          정책·QnA 반영 요청 (아래 워크플로우 참조)
 ```
+
+## 기능·인터랙션
+
+- **섹션 딥링크**: `#/article/{id}/{섹션id}` — 제목 클릭 시 이동, 호버 시 "링크 복사" 버튼(토스트)
+- **검색**: 헤더 알약/히어로 → 모달, 제목+본문 검색, 검색어 하이라이트, 결과 건수, ↑↓/Enter, 모바일 전체화면
+- **목차**: 우측 고정(1310px+), 스크롤 시 현재 섹션 하이라이트, 모바일은 상단 드롭다운(현재 섹션명 표시)
+- **본문 크로스링크**: "자세히 보기" 32곳이 대상 아티클의 정확한 섹션으로 연결 (전수 검증됨)
+- **1:1 문의**: 문의 박스·푸터 → https://payhug.io/my-info/inquiries (로그인 필요) + support@payhug.io
+
+테스트: 로컬 서버 실행 후 `tests/runner.html`을 헤드리스 Chrome `--dump-dom`으로 열면 PASS/FAIL 출력.
+모바일(375px) 검증은 `tests/mobile-375.html`로 수행.
+
+> **주의 (모바일 QA 캡처)**: macOS 헤드리스 Chrome(`--headless=new`)은 `--window-size`의 창 최소폭을
+> 500px로 클램프한다. `--window-size=375`로 스크린샷을 찍으면 500px로 렌더된 화면의 좌측 375px만
+> 잘려 저장되어 "우측 잘림"처럼 보이는 가짜 결함이 생기므로 그 방식의 캡처는 무효.
+> 375px 검증은 same-origin iframe(375px) 래퍼(`tests/mobile-375.html`) 또는
+> Playwright/Puppeteer의 `setViewport`로 할 것.
 
 ## 화면 구성 (7개 아티클)
 
@@ -28,8 +49,19 @@ assets/         로고·파비콘 (payhug-merchant-web 원본)
 | settlement | 선정산 | ✅ |
 | faq | 자주 묻는 질문 | ✅ |
 
-홈 = 히어로 검색 + 추천 2개 + 전체 카테고리 그리드.
-아티클 = 좌측 사이드 내비(전체 아티클) + 본문(번호 섹션·콜아웃·접기토글) + 우측 목차(TOC).
+홈 = 히어로(사이트명 + 검색) + 추천 대형 카드 2개 + 전체 카테고리 행 리스트.
+아티클 = 좌측 사이드 내비 + 본문(커버 배너·번호 섹션·콜아웃·접기토글) + 우측 목차(scroll-spy).
+
+## 정책·QnA 반영 워크플로우 (inbox)
+
+정책이 확정·변경되거나 QnA를 추가하고 싶으면:
+
+1. `inbox/_TEMPLATE.md`를 복사해 `inbox/YYYYMMDD_주제.md`로 작성 (GitHub 웹에서 파일 추가로도 가능)
+2. Claude에게 **"inbox 반영해줘"** 요청
+3. Claude가 ① 고객센터 해당 아티클의 자리표시자 교체·섹션 추가, ② payhug-spec 정책 문서 동기화(07 미확정 질문 갱신 포함), ③ 처리 파일을 `inbox/processed/`로 이동
+4. push → 1~2분 내 사이트 반영
+
+"확정" 수준의 내용만 고객센터 본문에 값으로 반영됨. 가설·확인 필요는 정책서에만 기록.
 
 ## 콘텐츠 수정 방법
 
