@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head><meta charset="UTF-8"><title>정책폼 QA</title></head>
+<body>
+<iframe id="f" src="../policy/index.html" style="width:1000px;height:800px;border:0"></iframe>
+<pre id="out">RUNNING</pre>
+<script>
+const out = [];
+const log = (n, ok, info) => out.push(`${ok ? "PASS" : "FAIL"} ${n}${info ? " — " + info : ""}`);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function waitFor(fn, timeout = 8000, step = 100) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(step);
+  }
+  return null;
+}
+(async () => {
+  try {
+    const f = document.getElementById("f");
+    // 레이스 방지 2단계:
+    // (1) about:blank 아닌 실제 문서인지 — contentDocument를 매번 다시 조회
+    // (2) 하단 인라인 <script>가 실행 완료됐는지 — #form 존재만으론 부족하다.
+    //     스크립트 끝의 render()가 채우는 #preview 내용으로 판정한다.
+    await waitFor(() => {
+      const d = f.contentDocument;
+      return d && d.getElementById("preview") && d.getElementById("preview").textContent.includes("접수 정보");
+    }, 10000);
+    const W = f.contentWindow, D = f.contentDocument;
+    log("boot:script-ran", typeof W.validate === "function");
+
+    // 1. 렌더
+    log("render:form", !!D.getElementById("form"));
+    log("render:notice", /공개 주소/.test(D.querySelector(".notice").textContent));
+    log("render:noindex", !!D.querySelector('meta[name=robots][content*="noindex"]'));
+    log("render:notion-link", !!D.querySelector('a[href*="notion.com"]'));
+    log("render:no-emoji", !/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(D.body.textContent));
+
+    // 2. 셀렉트 옵션이 노션 DB 스키마와 일치하는지
+    const opts = (id) => Array.from(D.getElementById(id).options).map((o) => o.value).filter(Boolean);
+    const CATS = ["회원·인증","비밀번호","가맹점 심사","선정산·정산","수수료","지급·환급","관리자 권한","개인정보·약관","알림"];
+    log("schema:category", JSON.stringify(opts("category")) === JSON.stringify(CATS), opts("category").join("/"));
+    log("schema:type", JSON.stringify(opts("type")) === JSON.stringify(["신규","변경","폐지"]));
+
+    // 3. 빈 상태 제출 → 검증 걸림 (창 안 열림)
+    let opened = 0;
+    W.open = function () { opened++; return null; };
+    D.getElementById("btn-gh").click();
+    await sleep(300);
+    log("validate:blocks-empty", opened === 0, "open 호출 " + opened);
+    log("validate:toast", /입력해 주세요/.test(D.getElementById("toast").textContent), D.getElementById("toast").textContent);
+
+    // 4. 채우고 미리보기 갱신
+    const set = (id, v) => {
+      const el = D.getElementById(id);
+      el.value = v;
+      el.dispatchEvent(new W.Event("input", { bubbles: true }));
+      el.dispatchEvent(new W.Event("change", { bubbles: true }));
+    };
+    set("title", "이체수수료 부과 단위 확정");
+    set("category", "수수료");
+    set("type", "변경");
+    set("body", "정산금 지급 건당 300원(부가세 별도)");
+    set("source", "이용계약서 제17조");
+    set("author", "테스트");
+    await sleep(200);
+    const pv = D.getElementById("preview").textContent;
+    log("preview:title", pv.includes("이체수수료 부과 단위 확정"));
+    log("preview:table", pv.includes("| 카테고리 | 수수료 |"));
+    log("preview:level-default", pv.includes("| 확정 수준 | 확정 |"));
+    log("preview:marker", pv.includes("payhug-policy-intake v1"));
+
+    // 5. 제출 → 비공개 레포 이슈 URL로 열림
+    let url = "";
+    W.open = function (u) { url = u; opened++; return null; };
+    opened = 0;
+    D.getElementById("btn-gh").click();
+    await sleep(300);
+    log("submit:opens", opened === 1, "open 호출 " + opened);
+    log("submit:private-repo", url.includes("Joo2n/payhug-policy-inbox/issues/new"), url.slice(0, 70));
+    log("submit:title-encoded", decodeURIComponent(url).includes("[수수료/확정] 이체수수료"));
+    log("submit:body-encoded", decodeURIComponent(url).includes("이용계약서 제17조"));
+    log("submit:label", url.includes("labels="));
+
+    // 6. 임시저장 → 복원
+    const saved = W.localStorage.getItem("payhug-policy-draft");
+    log("draft:saved", !!saved && JSON.parse(saved).title === "이체수수료 부과 단위 확정");
+
+    // 7. 칩 다중선택
+    const chip = D.querySelector('#targets input[value="가맹점"]');
+    chip.checked = true;
+    chip.dispatchEvent(new W.Event("change", { bubbles: true }));
+    await sleep(150);
+    log("chips:multi", D.getElementById("preview").textContent.includes("| 영향 대상 | 가맹점 |"));
+
+    // 8. 비우기
+    W.confirm = () => true;
+    D.getElementById("btn-clear").click();
+    await sleep(250);
+    log("clear:resets", D.getElementById("title").value === "");
+    log("clear:draft-gone", !W.localStorage.getItem("payhug-policy-draft"));
+    log("clear:articles-default", D.querySelector('#articles input[value="자동 판단"]').checked);
+  } catch (e) {
+    out.push("FAIL runner:exception — " + e.message);
+  }
+  const fails = out.filter((l) => l.startsWith("FAIL")).length;
+  document.getElementById("out").textContent = out.join("\n") + `\nDONE ${fails} FAILS`;
+  document.title = `QA_DONE_${fails}`;
+})();
+</script>
+</body>
+</html>
