@@ -36,7 +36,7 @@ async function waitFor(fn, timeout = 6000, step = 100) {
 
     // 3. 검색 입력 → 결과 + 하이라이트 + 건수
     const inp = D.querySelector("#search-modal input");
-    inp.value = "정산계좌";
+    inp.value = "전용계좌"; // 공식 용어 (계약서·용어사전 기준)
     inp.dispatchEvent(new W.Event("input", { bubbles: true }));
     const hit = await waitFor(() => D.querySelector(".modal-results a"));
     log("search:results", !!hit);
