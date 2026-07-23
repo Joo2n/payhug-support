@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>페이허그 정책 입력함 (내부용)</title>
+<link rel="icon" href="../assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#163300; --accent:#9fe870; --accent-hover:#8cdb5e;
+  --brand-soft:#f0f9e8; --link:#0070ff;
+  --text:rgba(0,0,0,.85); --text-sub:rgba(0,0,0,.6); --text-mute:rgba(0,0,0,.4);
+  --line:rgba(0,0,0,.12); --fill:rgba(0,0,0,.04);
+  --warn:#b45309; --warn-bg:#fffbeb;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Noto Sans KR",-apple-system,BlinkMacSystemFont,sans-serif;
+  color:var(--text);background:#fafafa;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+/* 헤더 */
+.hd{background:var(--brand);color:#fff;padding:0 24px;height:60px;
+  display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50}
+.hd img{height:22px}
+.hd .tag{font-size:12px;font-weight:500;background:rgba(255,255,255,.15);
+  padding:3px 9px;border-radius:20px;letter-spacing:-.2px}
+.hd .sp{flex:1}
+.hd a{color:rgba(255,255,255,.75);font-size:13px;text-decoration:none}
+.hd a:hover{color:#fff}
+
+.wrap{max-width:820px;margin:0 auto;padding:36px 20px 120px}
+h1{font-size:32px;letter-spacing:-.8px;margin:0 0 8px}
+.lead{color:var(--text-sub);font-size:15px;margin:0 0 24px}
+
+.notice{background:var(--warn-bg);border:1px solid #fde68a;border-radius:10px;
+  padding:14px 16px;font-size:13.5px;color:var(--warn);margin-bottom:28px}
+.notice b{font-weight:700}
+
+/* 카드 */
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:26px 26px 30px;margin-bottom:18px}
+.card h2{font-size:15px;font-weight:700;margin:0 0 4px;letter-spacing:-.3px}
+.card .sub{font-size:13px;color:var(--text-mute);margin:0 0 20px}
+
+.row{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.f{margin-bottom:16px}
+.f:last-child{margin-bottom:0}
+label{display:block;font-size:13px;font-weight:500;margin-bottom:6px}
+label .req{color:#dc2626;margin-left:2px}
+label .hint{font-weight:400;color:var(--text-mute);font-size:12px;margin-left:6px}
+
+input[type=text],input[type=date],select,textarea{
+  width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
+  font-family:inherit;font-size:14px;color:var(--text);background:#fff;transition:border-color .12s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);
+  box-shadow:0 0 0 3px rgba(22,51,0,.08)}
+textarea{resize:vertical;min-height:130px;line-height:1.7}
+textarea.sm{min-height:80px}
+select{appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(0,0,0,0.4)' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+
+/* 칩(다중선택) */
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chips label{display:inline-flex;align-items:center;margin:0;cursor:pointer;font-weight:400}
+.chips input{position:absolute;opacity:0;pointer-events:none}
+.chips span{display:inline-block;padding:6px 13px;border:1px solid var(--line);
+  border-radius:20px;font-size:13px;color:var(--text-sub);transition:all .12s;user-select:none}
+.chips label:hover span{border-color:rgba(0,0,0,.28)}
+.chips input:checked+span{background:var(--brand);border-color:var(--brand);color:#fff}
+.chips input:focus-visible+span{box-shadow:0 0 0 3px rgba(22,51,0,.15)}
+
+/* 확신도 라디오 */
+.lv{display:flex;gap:8px}
+.lv label{flex:1;margin:0;cursor:pointer}
+.lv input{position:absolute;opacity:0;pointer-events:none}
+.lv span{display:block;text-align:center;padding:11px 8px;border:1px solid var(--line);
+  border-radius:9px;font-size:13.5px;font-weight:500;color:var(--text-sub);transition:all .12s}
+.lv span small{display:block;font-size:11px;font-weight:400;color:var(--text-mute);margin-top:2px}
+.lv input:checked+span{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+.lv input:checked+span small{color:var(--brand);opacity:.7}
+
+/* 제출 */
+.actions{position:sticky;bottom:0;background:#fff;border:1px solid var(--line);
+  border-radius:14px;padding:20px 24px;margin-top:24px;
+  box-shadow:0 -2px 20px rgba(0,0,0,.06)}
+.actions h2{font-size:15px;font-weight:700;margin:0 0 14px}
+/* FAB·백드롭은 모바일에서만 노출 */
+.fab,.sheet-bd{display:none}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+button{font-family:inherit;font-size:14px;font-weight:500;border-radius:9px;
+  padding:12px 20px;cursor:pointer;border:1px solid transparent;transition:all .12s}
+button:disabled{opacity:.4;cursor:not-allowed}
+.b-main{background:var(--accent);color:var(--brand);font-weight:700;flex:1;min-width:200px}
+.b-main:hover:not(:disabled){background:var(--accent-hover)}
+.b-sub{background:#fff;border-color:var(--line);color:var(--text-sub)}
+.b-sub:hover:not(:disabled){border-color:rgba(0,0,0,.3);color:var(--text)}
+.saved{font-size:12px;color:var(--text-mute);margin-top:10px}
+
+/* 미리보기 */
+.prev{margin-top:18px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.prev summary{padding:13px 18px;cursor:pointer;font-size:13.5px;font-weight:500;
+  color:var(--text-sub);list-style:none;user-select:none}
+.prev summary::-webkit-details-marker{display:none}
+.prev summary::before{content:"▸ ";color:var(--text-mute)}
+.prev[open] summary::before{content:"▾ "}
+.prev pre{margin:0;padding:0 18px 18px;font-size:12.5px;line-height:1.65;
+  white-space:pre-wrap;word-break:break-all;color:var(--text-sub);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;max-height:340px;overflow:auto}
+
+.toast{position:fixed;left:50%;bottom:32px;transform:translateX(-50%) translateY(12px);
+  background:var(--brand);color:#fff;padding:12px 22px;border-radius:24px;font-size:14px;
+  opacity:0;pointer-events:none;transition:all .22s;z-index:100}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:640px){
+  .row{grid-template-columns:1fr}
+  h1{font-size:26px}
+  .lv{flex-direction:column}
+  .b-main{min-width:100%}
+
+  /* 제출 영역이 화면 절반을 먹지 않도록, 우하단 FAB → 바텀시트로 바꾼다 */
+  .wrap{padding:24px 16px 40px}
+
+  .fab{display:flex;position:fixed;right:16px;bottom:16px;z-index:70;
+    width:52px;height:52px;padding:0;border-radius:50%;
+    align-items:center;justify-content:center;
+    background:var(--accent);color:var(--brand);border:0;
+    box-shadow:0 4px 16px rgba(0,0,0,.22);transition:transform .16s}
+  .fab:active{transform:scale(.93)}
+  .fab svg{width:23px;height:23px}
+
+  .sheet-bd{display:block;position:fixed;inset:0;z-index:71;
+    background:rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:opacity .2s}
+  .sheet-bd.on{opacity:1;pointer-events:auto}
+
+  .actions{position:fixed;left:0;right:0;bottom:0;z-index:72;
+    margin:0;border:0;border-radius:16px 16px 0 0;
+    padding:8px 18px calc(20px + env(safe-area-inset-bottom));
+    box-shadow:0 -6px 28px rgba(0,0,0,.2);
+    transform:translateY(110%);transition:transform .22s ease}
+  .actions.open{transform:translateY(0)}
+  /* 시트를 끌어내릴 수 있다는 신호 */
+  .actions::before{content:"";display:block;width:38px;height:4px;margin:0 auto 14px;
+    border-radius:2px;background:rgba(0,0,0,.16)}
+  .actions h2{margin:0 0 12px}
+  .btns{flex-direction:column}
+  .b-sub{width:100%}
+}
+</style>
+</head>
+<body>
+
+<header class="hd">
+  <img src="../assets/logo-payhug-white.png" alt="페이허그">
+  <span class="tag">정책 입력함 · 내부용</span>
+  <span class="sp"></span>
+  <a href="../">고객센터</a>
+</header>
+
+<div class="wrap">
+  <h1>정책 입력함</h1>
+  <p class="lead">확정·변경된 정책이나 추가할 QnA를 여기에 적어 제출하면, 고객센터와 정책서에 반영됩니다.
+    노션이 편하면 <a href="https://app.notion.com/p/a43ff18585214319b5d3b5f0d8643fac" target="_blank" rel="noopener">정책 입력함 DB</a>에 직접 써도 됩니다. 어느 쪽이든 같은 항목으로 접수됩니다.</p>
+
+  <div class="notice">
+    <b>이 페이지는 공개 주소입니다.</b> 양식은 비어 있는 상태로만 공개되고, 작성한 <b>내용은 이 페이지에 저장되지 않습니다</b>.
+    아래 <b>[GitHub 이슈로 제출]</b>을 누르면 내용이 비공개 저장소로만 전달됩니다.
+    고객·거래처 실명, 계좌번호, 사업자번호 등 개인정보는 적지 마세요.
+  </div>
+
+  <form id="form">
+
+    <div class="card">
+      <h2>무엇에 대한 내용인가요</h2>
+      <p class="sub">분류가 정확할수록 반영 위치를 바로 찾을 수 있습니다.</p>
+
+      <div class="f">
+        <label for="title">제목<span class="req">*</span>
+          <span class="hint">한 줄 요약</span></label>
+        <input type="text" id="title" name="title" required
+          placeholder="예) 이체수수료 부과 단위 확정 — 건당 300원">
+      </div>
+
+      <div class="row">
+        <div class="f">
+          <label for="category">카테고리<span class="req">*</span></label>
+          <select id="category" name="category" required>
+            <option value="">선택하세요</option>
+            <option>회원·인증</option><option>비밀번호</option>
+            <option>가맹점 심사</option><option>선정산·정산</option>
+            <option>수수료</option><option>지급·환급</option>
+            <option>관리자 권한</option><option>개인정보·약관</option>
+            <option>알림</option>
+          </select>
+        </div>
+        <div class="f">
+          <label for="type">변경 유형<span class="req">*</span></label>
+          <select id="type" name="type" required>
+            <option value="">선택하세요</option>
+            <option>신규</option><option>변경</option><option>폐지</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="f">
+          <label for="reason">변경 사유</label>
+          <select id="reason" name="reason">
+            <option value="">선택 안 함</option>
+            <option>CS</option><option>보안</option><option>운영</option>
+            <option>법무·규제</option><option>개발제약</option><option>사업</option>
+          </select>
+        </div>
+        <div class="f">
+          <label for="due">적용 예정일 <span class="hint">모르면 비워두세요</span></label>
+          <input type="date" id="due" name="due">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>확정 수준</h2>
+      <p class="sub"><b>확정</b>만 고객센터 본문에 실제 값으로 노출됩니다. 나머지는 정책서에만 기록됩니다.</p>
+      <div class="lv">
+        <label><input type="radio" name="level" value="확정" checked>
+          <span>확정<small>결정 완료</small></span></label>
+        <label><input type="radio" name="level" value="가설">
+          <span>가설<small>이렇게 하려고 함</small></span></label>
+        <label><input type="radio" name="level" value="확인 필요">
+          <span>확인 필요<small>아직 결정 안 됨</small></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>내용</h2>
+      <p class="sub">문장을 다듬을 필요 없습니다. 사실만 정확하게 적어주세요.</p>
+
+      <div class="f">
+        <label for="body">정책 내용<span class="req">*</span></label>
+        <textarea id="body" name="body" required
+placeholder="예)
+- 이체수수료는 정산금 지급 건당 300원(부가세 별도)
+- 하루에 여러 건 지급되면 건마다 부과
+- 가맹점 부담이며 미리 받는 돈에서 차감
+
+관련 조항: 이용계약서 제17조"></textarea>
+      </div>
+
+      <div class="f">
+        <label for="source">근거·출처<span class="req">*</span>
+          <span class="hint">누가·언제·어디서 정했는지</span></label>
+        <textarea id="source" name="source" class="sm" required
+          placeholder="예) 7/21 대표·운영팀 회의 결정 / 이용계약서 제17조 / 하나은행 회신 메일"></textarea>
+      </div>
+
+      <div class="f">
+        <label for="note">기존 내용과 다른 점 <span class="hint">선택</span></label>
+        <textarea id="note" name="note" class="sm"
+          placeholder="예) 고객센터에는 '일 1회 300원'으로 적혀 있는데 이게 틀렸습니다."></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>영향 범위</h2>
+      <p class="sub">해당되는 것을 모두 선택하세요. 모르면 비워두면 됩니다.</p>
+
+      <div class="f">
+        <label>영향 대상</label>
+        <div class="chips" id="targets">
+          <label><input type="checkbox" value="가맹점"><span>가맹점</span></label>
+          <label><input type="checkbox" value="USER"><span>USER</span></label>
+          <label><input type="checkbox" value="ADMIN"><span>ADMIN</span></label>
+          <label><input type="checkbox" value="PROF"><span>PROF</span></label>
+        </div>
+      </div>
+
+      <div class="f">
+        <label>영향 화면</label>
+        <div class="chips" id="screens">
+          <label><input type="checkbox" value="화면"><span>화면</span></label>
+          <label><input type="checkbox" value="관리자"><span>관리자</span></label>
+          <label><input type="checkbox" value="결제"><span>결제</span></label>
+          <label><input type="checkbox" value="서버"><span>서버</span></label>
+          <label><input type="checkbox" value="DB"><span>DB</span></label>
+          <label><input type="checkbox" value="API"><span>API</span></label>
+          <label><input type="checkbox" value="환급"><span>환급</span></label>
+        </div>
+      </div>
+
+      <div class="f">
+        <label>고객센터 반영 <span class="hint">사장님이 읽는 도움말</span></label>
+        <div class="chips" id="articles">
+          <label><input type="checkbox" value="자동 판단" checked><span>자동 판단</span></label>
+          <label><input type="checkbox" value="signup"><span>가입</span></label>
+          <label><input type="checkbox" value="documents"><span>서류</span></label>
+          <label><input type="checkbox" value="workplace"><span>매장</span></label>
+          <label><input type="checkbox" value="contract"><span>계약</span></label>
+          <label><input type="checkbox" value="sales"><span>매출</span></label>
+          <label><input type="checkbox" value="settlement"><span>정산</span></label>
+          <label><input type="checkbox" value="faq"><span>자주 묻는 질문</span></label>
+          <label><input type="checkbox" value="반영 안 함"><span>반영 안 함</span></label>
+        </div>
+      </div>
+
+      <div class="f">
+        <label for="author">작성자<span class="req">*</span></label>
+        <input type="text" id="author" name="author" required placeholder="이름 또는 팀">
+      </div>
+    </div>
+
+    <div class="actions" id="actions">
+      <h2>제출</h2>
+      <div class="btns">
+        <button type="button" class="b-main" id="btn-gh">GitHub 이슈로 제출</button>
+        <button type="button" class="b-sub" id="btn-copy">마크다운 복사</button>
+        <button type="button" class="b-sub" id="btn-dl">.md 파일 저장</button>
+        <button type="button" class="b-sub" id="btn-clear">비우기</button>
+      </div>
+      <p class="saved" id="saved">작성 중인 내용은 이 브라우저에 자동 임시저장됩니다.</p>
+    </div>
+
+    <details class="prev">
+      <summary>제출될 내용 미리보기</summary>
+      <pre id="preview"></pre>
+    </details>
+
+  </form>
+</div>
+
+<div class="sheet-bd" id="sheet-bd"></div>
+<button type="button" class="fab" id="fab" aria-label="제출 메뉴 열기" aria-expanded="false" aria-controls="actions">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>
+  </svg>
+</button>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// 제출 대상: 비공개 저장소 (내용은 저장소 멤버만 열람 가능)
+var REPO = "Joo2n/payhug-policy-inbox";
+var KEY = "payhug-policy-draft";
+
+var $ = function (s) { return document.querySelector(s); };
+var form = $("#form");
+
+function checked(id) {
+  return Array.prototype.slice
+    .call(document.querySelectorAll("#" + id + " input:checked"))
+    .map(function (c) { return c.value; });
+}
+
+function today() {
+  var d = new Date(), p = function (n) { return String(n).padStart(2, "0"); };
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+
+function collect() {
+  var v = function (id) { return ($("#" + id).value || "").trim(); };
+  var lv = form.querySelector('input[name=level]:checked');
+  return {
+    title: v("title"),
+    category: v("category"),
+    type: v("type"),
+    reason: v("reason"),
+    due: v("due"),
+    level: lv ? lv.value : "",
+    body: v("body"),
+    source: v("source"),
+    note: v("note"),
+    author: v("author"),
+    targets: checked("targets"),
+    screens: checked("screens"),
+    articles: checked("articles"),
+  };
+}
+
+// 정책 이력 DB 스키마와 같은 필드명을 쓴다 (노션·깃허브 어느 경로로 와도 동일하게 파싱)
+function toMarkdown(d) {
+  var L = [];
+  L.push("## 접수 정보");
+  L.push("");
+  L.push("| 항목 | 값 |");
+  L.push("| --- | --- |");
+  L.push("| 정책명 | " + (d.title || "-") + " |");
+  L.push("| 카테고리 | " + (d.category || "-") + " |");
+  L.push("| 변경 유형 | " + (d.type || "-") + " |");
+  L.push("| 변경 사유 | " + (d.reason || "-") + " |");
+  L.push("| 확정 수준 | " + (d.level || "-") + " |");
+  L.push("| 적용 예정일 | " + (d.due || "미정") + " |");
+  L.push("| 영향 대상 | " + (d.targets.length ? d.targets.join(", ") : "-") + " |");
+  L.push("| 영향 화면 | " + (d.screens.length ? d.screens.join(", ") : "-") + " |");
+  L.push("| 고객센터 반영 | " + (d.articles.length ? d.articles.join(", ") : "자동 판단") + " |");
+  L.push("| 작성자 | " + (d.author || "-") + " |");
+  L.push("| 접수일 | " + today() + " |");
+  L.push("");
+  L.push("## 정책 내용");
+  L.push("");
+  L.push(d.body || "");
+  L.push("");
+  L.push("## 근거·출처");
+  L.push("");
+  L.push(d.source || "");
+  if (d.note) {
+    L.push("");
+    L.push("## 기존 내용과 다른 점");
+    L.push("");
+    L.push(d.note);
+  }
+  L.push("");
+  L.push("---");
+  L.push("");
+  L.push("<!-- payhug-policy-intake v1 · 확정 수준이 '확정'인 항목만 고객센터 본문에 값으로 반영 -->");
+  return L.join("\n");
+}
+
+function render() {
+  $("#preview").textContent = toMarkdown(collect());
+}
+
+var toastT;
+function toast(msg) {
+  var t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("on");
+  clearTimeout(toastT);
+  toastT = setTimeout(function () { t.classList.remove("on"); }, 2600);
+}
+
+// 필수값 검사 — 브라우저 기본 검사는 type=button이라 안 걸리므로 직접 확인
+function validate() {
+  var d = collect();
+  var miss = [];
+  if (!d.title) miss.push("제목");
+  if (!d.category) miss.push("카테고리");
+  if (!d.type) miss.push("변경 유형");
+  if (!d.body) miss.push("정책 내용");
+  if (!d.source) miss.push("근거·출처");
+  if (!d.author) miss.push("작성자");
+  if (miss.length) {
+    toast(miss.join(", ") + " 을(를) 입력해 주세요");
+    var map = { "제목": "title", "카테고리": "category", "변경 유형": "type",
+                "정책 내용": "body", "근거·출처": "source", "작성자": "author" };
+    var el = $("#" + map[miss[0]]);
+    if (el) { el.focus(); el.scrollIntoView({ behavior: "smooth", block: "center" }); }
+    return null;
+  }
+  return d;
+}
+
+// --- 임시저장 ---
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(collect())); } catch (e) {}
+}
+function restore() {
+  var raw;
+  try { raw = localStorage.getItem(KEY); } catch (e) { return; }
+  if (!raw) return;
+  var d;
+  try { d = JSON.parse(raw); } catch (e) { return; }
+  ["title", "category", "type", "reason", "due", "body", "source", "note", "author"]
+    .forEach(function (k) { if (d[k]) $("#" + k).value = d[k]; });
+  if (d.level) {
+    var r = form.querySelector('input[name=level][value="' + d.level + '"]');
+    if (r) r.checked = true;
+  }
+  [["targets", d.targets], ["screens", d.screens], ["articles", d.articles]]
+    .forEach(function (pair) {
+      if (!pair[1]) return;
+      document.querySelectorAll("#" + pair[0] + " input").forEach(function (c) {
+        c.checked = pair[1].indexOf(c.value) > -1;
+      });
+    });
+  $("#saved").textContent = "이전에 작성하던 내용을 불러왔습니다.";
+}
+
+form.addEventListener("input", function () { save(); render(); });
+form.addEventListener("change", function () { save(); render(); });
+
+// --- 제출: GitHub 이슈 프리필 ---
+// 페이지에 토큰을 두지 않는다. 깃허브 로그인 세션으로 본인이 직접 제출한다.
+$("#btn-gh").addEventListener("click", function () {
+  var d = validate();
+  if (!d) return;
+  var title = "[" + d.category + "/" + d.level + "] " + d.title;
+  var url = "https://github.com/" + REPO + "/issues/new"
+    + "?title=" + encodeURIComponent(title)
+    + "&body=" + encodeURIComponent(toMarkdown(d))
+    + "&labels=" + encodeURIComponent("정책접수");
+  // URL 길이 한계(약 8000자)를 넘으면 깃허브가 잘라내므로 복사 경로로 유도
+  if (url.length > 7800) {
+    copy(toMarkdown(d), "내용이 길어 이슈 링크에 담기지 않았습니다. 마크다운을 복사했으니 이슈 본문에 붙여넣어 주세요.");
+    window.open("https://github.com/" + REPO + "/issues/new?title=" + encodeURIComponent(title), "_blank", "noopener");
+    return;
+  }
+  window.open(url, "_blank", "noopener");
+  toast("깃허브 이슈 작성 창이 열렸습니다. 내용 확인 후 제출해 주세요.");
+});
+
+// --- 복사 ---
+function copy(text, msg) {
+  var done = function () { toast(msg || "복사했습니다."); };
+  var fallback = function () {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); done(); }
+    catch (e) { toast("복사에 실패했습니다. 미리보기에서 직접 선택해 주세요."); }
+    document.body.removeChild(ta);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, fallback);
+  } else fallback();
+}
+
+$("#btn-copy").addEventListener("click", function () {
+  var d = validate();
+  if (!d) return;
+  copy(toMarkdown(d), "복사했습니다. Claude에게 붙여넣어 주세요.");
+});
+
+// --- 파일 저장 ---
+$("#btn-dl").addEventListener("click", function () {
+  var d = validate();
+  if (!d) return;
+  var safe = d.title.replace(/[\\/:*?"<>|]/g, "").slice(0, 40).trim() || "정책";
+  var name = today().replace(/-/g, "") + "_" + safe + ".md";
+  var blob = new Blob([toMarkdown(d)], { type: "text/markdown;charset=utf-8" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  toast(name + " 저장됨");
+});
+
+// --- 비우기 ---
+$("#btn-clear").addEventListener("click", function () {
+  if (!confirm("작성한 내용을 모두 지웁니다. 계속할까요?")) return;
+  form.reset();
+  document.querySelectorAll("#articles input").forEach(function (c) {
+    c.checked = c.value === "자동 판단";
+  });
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  $("#saved").textContent = "작성 중인 내용은 이 브라우저에 자동 임시저장됩니다.";
+  render();
+  toast("비웠습니다.");
+});
+
+// --- 모바일 바텀시트 ---
+// 데스크톱에서는 .fab/.sheet-bd가 display:none이라 아래 로직이 화면에 영향을 주지 않는다.
+var actions = $("#actions"), fab = $("#fab"), bd = $("#sheet-bd");
+
+function sheetOpen(on) {
+  actions.classList.toggle("open", on);
+  bd.classList.toggle("on", on);
+  fab.setAttribute("aria-expanded", on ? "true" : "false");
+  fab.setAttribute("aria-label", on ? "제출 메뉴 닫기" : "제출 메뉴 열기");
+}
+function isSheet() {
+  // FAB이 보이는 폭(모바일)에서만 시트로 동작
+  return getComputedStyle(fab).display !== "none";
+}
+
+fab.addEventListener("click", function () { sheetOpen(!actions.classList.contains("open")); });
+bd.addEventListener("click", function () { sheetOpen(false); });
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape" && actions.classList.contains("open")) sheetOpen(false);
+});
+
+// 시트를 아래로 끌어내려 닫기
+var dragY = null;
+actions.addEventListener("touchstart", function (e) {
+  if (!isSheet() || !actions.classList.contains("open")) return;
+  dragY = e.touches[0].clientY;
+}, { passive: true });
+actions.addEventListener("touchmove", function (e) {
+  if (dragY === null) return;
+  var dy = e.touches[0].clientY - dragY;
+  if (dy > 0) actions.style.transform = "translateY(" + dy + "px)";
+}, { passive: true });
+actions.addEventListener("touchend", function (e) {
+  if (dragY === null) return;
+  var dy = (e.changedTouches[0] || {}).clientY - dragY;
+  actions.style.transform = "";
+  if (dy > 70) sheetOpen(false);
+  dragY = null;
+});
+
+// 필수값이 비어 focus가 필요할 땐 시트를 먼저 닫아야 그 항목이 보인다
+var origValidate = validate;
+validate = function () {
+  var r = origValidate();
+  if (!r && isSheet()) sheetOpen(false);
+  return r;
+};
+// 제출·복사·저장이 끝나면 시트를 닫는다
+["btn-gh", "btn-copy", "btn-dl", "btn-clear"].forEach(function (id) {
+  $("#" + id).addEventListener("click", function () {
+    if (isSheet()) setTimeout(function () { sheetOpen(false); }, 120);
+  });
+});
+
+restore();
+render();
+</script>
+</body>
+</html>
